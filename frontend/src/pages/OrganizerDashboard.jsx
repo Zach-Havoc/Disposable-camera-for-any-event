@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { api } from '../api.js'
 
 export default function OrganizerDashboard() {
   const [organizer, setOrganizer] = useState(null)
@@ -9,7 +10,7 @@ export default function OrganizerDashboard() {
   const [qrModal, setQrModal] = useState(null)
 
   useEffect(() => {
-    fetch('/api/organizer/me', { credentials: 'include' })
+    api('/api/organizer/me')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setOrganizer(data) })
       .finally(() => setLoading(false))
@@ -17,7 +18,7 @@ export default function OrganizerDashboard() {
 
   useEffect(() => {
     if (!organizer) return
-    fetch('/api/organizer/events', { credentials: 'include' })
+    api('/api/organizer/events')
       .then(r => r.json())
       .then(setEvents)
   }, [organizer])
@@ -25,9 +26,8 @@ export default function OrganizerDashboard() {
   async function createEvent(e) {
     e.preventDefault()
     setCreating(true)
-    const res = await fetch('/api/organizer/events', {
+    const res = await api('/api/organizer/events', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
@@ -39,19 +39,19 @@ export default function OrganizerDashboard() {
   }
 
   async function showQR(eventId) {
-    const res = await fetch(`/api/organizer/events/${eventId}/qr`, { credentials: 'include' })
+    const res = await api(`/api/organizer/events/${eventId}/qr`)
     const data = await res.json()
     setQrModal(data)
   }
 
   async function deactivate(eventId) {
     if (!confirm('Deactivate this event? Guests will no longer be able to upload.')) return
-    await fetch(`/api/organizer/events/${eventId}/deactivate`, { method: 'PATCH', credentials: 'include' })
+    await api(`/api/organizer/events/${eventId}/deactivate`, { method: 'PATCH' })
     setEvents(prev => prev.map(e => e.id === eventId ? { ...e, active: 0 } : e))
   }
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    await api('/api/auth/logout', { method: 'POST' })
     setOrganizer(null)
   }
 
@@ -63,7 +63,7 @@ export default function OrganizerDashboard() {
         <div style={{ fontSize: 52 }}>📷</div>
         <h1 style={s.title}>DisposableCam</h1>
         <p style={s.subtitle}>Organizer dashboard — manage your events and QR codes</p>
-        <a href="/api/auth/google" style={s.googleBtn}>
+        <a href={`${import.meta.env.VITE_API_URL || ''}/api/auth/google`} style={s.googleBtn}>
           <GoogleIcon />
           Continue with Google
         </a>

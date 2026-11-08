@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { api } from '../api.js'
 
 export default function NicknameEntry() {
   const { eventId } = useParams()
@@ -10,7 +11,7 @@ export default function NicknameEntry() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/events/${eventId}`)
+    api(`/api/events/${eventId}`)
       .then(r => r.json())
       .then(data => {
         if (data.error) setError(data.error)

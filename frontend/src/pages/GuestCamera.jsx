@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { api } from '../api.js'
 
 const MAX_PHOTOS = 20
 
@@ -76,7 +77,7 @@ export default function GuestCamera() {
         form.append('nickname', nickname)
         form.append('eventId', eventId)
 
-        const res = await fetch('/api/upload', { method: 'POST', body: form })
+        const res = await api('/api/upload', { method: 'POST', body: form })
         if (!res.ok) throw new Error('Upload failed')
       } catch {
         // silent — photo is still captured, upload failure shown via count not incrementing on server
