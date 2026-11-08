@@ -47,7 +47,10 @@ router.get('/google/callback', async (req, res) => {
     `).run(data.id, data.email, data.name, tokens.refresh_token || null)
 
     req.session.organizerId = data.id
-    res.redirect(`${process.env.FRONTEND_URL}/organizer`)
+    req.session.save(err => {
+      if (err) console.error('Session save error:', err)
+      res.redirect(`${process.env.FRONTEND_URL}/organizer`)
+    })
   } catch (err) {
     console.error('OAuth callback error:', err.message)
     res.status(500).send('Authentication failed.')
