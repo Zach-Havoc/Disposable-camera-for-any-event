@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS organizers (
   email TEXT NOT NULL,
   name TEXT,
   refresh_token TEXT,
+  session_token TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

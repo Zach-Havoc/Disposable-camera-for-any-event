@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { google } from 'googleapis'
+import { nanoid } from 'nanoid'
 import db from '../db/database.js'
 
 const router = Router()
@@ -37,20 +38,19 @@ router.get('/google/callback', async (req, res) => {
 
     const { data } = await google.oauth2({ version: 'v2', auth: client }).userinfo.get()
 
+    const sessionToken = nanoid(32)
+
     db.prepare(`
-      INSERT INTO organizers (id, email, name, refresh_token)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO organizers (id, email, name, refresh_token, session_token)
+      VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         email = excluded.email,
         name = excluded.name,
-        refresh_token = COALESCE(excluded.refresh_token, refresh_token)
-    `).run(data.id, data.email, data.name, tokens.refresh_token || null)
+        refresh_token = COALESCE(excluded.refresh_token, refresh_token),
+        session_token = excluded.session_token
+    `).run(data.id, data.email, data.name, tokens.refresh_token || null, sessionToken)
 
-    req.session.organizerId = data.id
-    req.session.save(err => {
-      if (err) console.error('Session save error:', err)
-      res.redirect(`${process.env.FRONTEND_URL}/organizer`)
-    })
+    res.redirect(`${process.env.FRONTEND_URL}/organizer?token=${sessionToken}`)
   } catch (err) {
     console.error('OAuth callback error:', err.message)
     res.status(500).send('Authentication failed.')
@@ -58,7 +58,10 @@ router.get('/google/callback', async (req, res) => {
 })
 
 router.post('/logout', (req, res) => {
-  req.session.destroy()
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  if (token) {
+    db.prepare('UPDATE organizers SET session_token = NULL WHERE session_token = ?').run(token)
+  }
   res.json({ ok: true })
 })
 

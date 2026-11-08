@@ -7,13 +7,16 @@ import { createEventFolder } from '../services/googleDrive.js'
 const router = Router()
 
 function requireAuth(req, res, next) {
-  if (!req.session?.organizerId) return res.status(401).json({ error: 'Not authenticated.' })
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  if (!token) return res.status(401).json({ error: 'Not authenticated.' })
+  const org = db.prepare('SELECT id FROM organizers WHERE session_token = ?').get(token)
+  if (!org) return res.status(401).json({ error: 'Invalid token.' })
+  req.organizerId = org.id
   next()
 }
 
 router.get('/me', requireAuth, (req, res) => {
-  const org = db.prepare('SELECT id, email, name FROM organizers WHERE id = ?').get(req.session.organizerId)
-  if (!org) return res.status(401).json({ error: 'Not found.' })
+  const org = db.prepare('SELECT id, email, name FROM organizers WHERE id = ?').get(req.organizerId)
   res.json(org)
 })
 
@@ -26,7 +29,7 @@ router.get('/events', requireAuth, (req, res) => {
     WHERE e.organizer_id = ?
     GROUP BY e.id
     ORDER BY e.created_at DESC
-  `).all(req.session.organizerId)
+  `).all(req.organizerId)
   res.json(events)
 })
 
@@ -34,8 +37,7 @@ router.post('/events', requireAuth, async (req, res) => {
   const { name, eventDate } = req.body
   if (!name || !eventDate) return res.status(400).json({ error: 'name and eventDate required.' })
 
-  const org = db.prepare('SELECT refresh_token FROM organizers WHERE id = ?').get(req.session.organizerId)
-
+  const org = db.prepare('SELECT refresh_token FROM organizers WHERE id = ?').get(req.organizerId)
   const id = nanoid(10)
   let driveFolderId = null
 
@@ -50,14 +52,14 @@ router.post('/events', requireAuth, async (req, res) => {
   db.prepare(`
     INSERT INTO events (id, name, event_date, drive_folder_id, photo_limit, active, organizer_id)
     VALUES (?, ?, ?, ?, 20, 1, ?)
-  `).run(id, name, eventDate, driveFolderId, req.session.organizerId)
+  `).run(id, name, eventDate, driveFolderId, req.organizerId)
 
   res.json({ id, name, eventDate, driveFolderId })
 })
 
 router.get('/events/:id/qr', requireAuth, async (req, res) => {
   const event = db.prepare('SELECT id, name FROM events WHERE id = ? AND organizer_id = ?')
-    .get(req.params.id, req.session.organizerId)
+    .get(req.params.id, req.organizerId)
   if (!event) return res.status(404).json({ error: 'Event not found.' })
 
   const url = `${process.env.FRONTEND_URL}/event/${event.id}`
@@ -67,7 +69,7 @@ router.get('/events/:id/qr', requireAuth, async (req, res) => {
 
 router.patch('/events/:id/deactivate', requireAuth, (req, res) => {
   db.prepare('UPDATE events SET active = 0 WHERE id = ? AND organizer_id = ?')
-    .run(req.params.id, req.session.organizerId)
+    .run(req.params.id, req.organizerId)
   res.json({ ok: true })
 })
 

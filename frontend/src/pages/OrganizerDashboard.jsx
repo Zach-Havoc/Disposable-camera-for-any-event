@@ -10,6 +10,13 @@ export default function OrganizerDashboard() {
   const [qrModal, setQrModal] = useState(null)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    if (token) {
+      localStorage.setItem('organizer_token', token)
+      window.history.replaceState({}, '', '/organizer')
+    }
+
     api('/api/organizer/me')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setOrganizer(data) })
@@ -52,6 +59,7 @@ export default function OrganizerDashboard() {
 
   async function logout() {
     await api('/api/auth/logout', { method: 'POST' })
+    localStorage.removeItem('organizer_token')
     setOrganizer(null)
   }
 
