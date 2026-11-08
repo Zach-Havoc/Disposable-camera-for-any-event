@@ -21,11 +21,21 @@ export default function GuestCamera() {
   const [showGallery, setShowGallery] = useState(false)
 
   useEffect(() => {
-    const name = sessionStorage.getItem(`nickname_${eventId}`)
-    const evName = sessionStorage.getItem(`event_name_${eventId}`) || ''
+    const name = localStorage.getItem(`nickname_${eventId}`)
+    const evName = localStorage.getItem(`event_name_${eventId}`) || ''
     if (!name) { navigate(`/event/${eventId}`); return }
     setNickname(name)
     setEventName(evName)
+
+    api(`/api/events/${eventId}/guest-count?nickname=${encodeURIComponent(name)}`)
+      .then(r => r.json())
+      .then(data => {
+        const existing = data.count || 0
+        setPhotoCount(existing)
+        if (existing >= MAX_PHOTOS) setLimitHit(true)
+      })
+      .catch(() => {})
+
     startCamera('environment')
     return () => stopCamera()
   }, [eventId])

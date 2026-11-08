@@ -28,8 +28,8 @@ export default function NicknameEntry() {
     const name = nickname.trim()
     if (!name || submitting) return
     setSubmitting(true)
-    sessionStorage.setItem(`nickname_${eventId}`, name)
-    if (event?.name) sessionStorage.setItem(`event_name_${eventId}`, event.name)
+    localStorage.setItem(`nickname_${eventId}`, name)
+    if (event?.name) localStorage.setItem(`event_name_${eventId}`, event.name)
     navigate(`/event/${eventId}/camera`)
   }
 

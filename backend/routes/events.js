@@ -3,6 +3,15 @@ import db from '../db/database.js'
 
 const router = Router()
 
+router.get('/:id/guest-count', (req, res) => {
+  const { nickname } = req.query
+  if (!nickname) return res.json({ count: 0 })
+  const row = db.prepare(
+    'SELECT COUNT(*) AS count FROM photos WHERE event_id = ? AND nickname = ?'
+  ).get(req.params.id, nickname)
+  res.json({ count: row.count })
+})
+
 router.get('/:id', (req, res) => {
   const event = db.prepare('SELECT id, name, event_date, photo_limit, active FROM events WHERE id = ?').get(req.params.id)
 
