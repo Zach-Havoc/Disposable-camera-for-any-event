@@ -8,6 +8,7 @@ export default function OrganizerDashboard() {
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ name: '', eventDate: '' })
   const [qrModal, setQrModal] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -43,6 +44,7 @@ export default function OrganizerDashboard() {
     setEvents(prev => [{ ...data, photo_count: 0, active: 1 }, ...prev])
     setForm({ name: '', eventDate: '' })
     setCreating(false)
+    setShowCreate(false)
   }
 
   async function showQR(eventId) {
@@ -63,73 +65,116 @@ export default function OrganizerDashboard() {
     setOrganizer(null)
   }
 
-  if (loading) return <Page><p style={{ color: '#888' }}>Loading…</p></Page>
+  if (loading) return (
+    <Page>
+      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
+        <div style={S.spinner} />
+      </div>
+    </Page>
+  )
 
   if (!organizer) return (
     <Page>
-      <div style={s.card}>
-        <div style={{ fontSize: 52 }}>📷</div>
-        <h1 style={s.title}>DisposableCam</h1>
-        <p style={s.subtitle}>Organizer dashboard — manage your events and QR codes</p>
-        <a href={`${import.meta.env.VITE_API_URL || ''}/api/auth/google`} style={s.googleBtn}>
+      <div style={S.loginCard}>
+        <span style={S.logo}>MOMENTA</span>
+        <div style={S.loginCopy}>
+          <h1 style={S.loginHeadline}>Create your event camera</h1>
+          <p style={S.loginSub}>Guests scan a QR code. Photos land in your Drive. No app needed.</p>
+        </div>
+        <a href={`${import.meta.env.VITE_API_URL || ''}/api/auth/google`} style={S.googleBtn}>
           <GoogleIcon />
           Continue with Google
         </a>
-        <p style={s.hint}>Your photos will be saved to your Google Drive.</p>
+        <p style={S.loginHint}>Secure sign-in. We only write to your Drive when you create an event.</p>
       </div>
     </Page>
   )
 
   return (
     <Page>
-      <div style={s.dashboard}>
+      <div style={S.dashboard}>
         {/* Header */}
-        <div style={s.header}>
-          <div>
-            <h1 style={s.title}>Your Events</h1>
-            <p style={s.subtitle}>{organizer.email}</p>
+        <div style={S.header}>
+          <span style={S.logo}>MOMENTA</span>
+          <div style={S.headerRight}>
+            <span style={S.headerEmail}>{organizer.email}</span>
+            <button style={S.logoutPill} onClick={logout}>Log out</button>
           </div>
-          <button onClick={logout} style={s.logoutBtn}>Log out</button>
         </div>
 
-        {/* Create event form */}
-        <form onSubmit={createEvent} style={s.createForm}>
-          <input
-            style={s.input}
-            placeholder="Event name (e.g. Sarah & John Wedding)"
-            value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            required
-          />
-          <input
-            style={s.input}
-            type="date"
-            value={form.eventDate}
-            onChange={e => setForm(f => ({ ...f, eventDate: e.target.value }))}
-            required
-          />
-          <button style={{ ...s.btn, opacity: creating ? 0.5 : 1 }} type="submit" disabled={creating}>
-            {creating ? 'Creating…' : '+ New Event'}
-          </button>
-        </form>
+        {/* New event toggle */}
+        <button
+          style={{ ...S.newEventBtn, ...(showCreate ? S.newEventBtnActive : {}) }}
+          onClick={() => setShowCreate(v => !v)}
+        >
+          <span style={{ marginRight: 6 }}>{showCreate ? '−' : '+'}</span>
+          New event
+        </button>
+
+        {/* Create form */}
+        {showCreate && (
+          <form onSubmit={createEvent} style={S.createForm}>
+            <input
+              style={S.input}
+              placeholder="Event name — e.g. Sarah & John Wedding"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              required
+              autoFocus
+            />
+            <input
+              style={S.input}
+              type="date"
+              value={form.eventDate}
+              onChange={e => setForm(f => ({ ...f, eventDate: e.target.value }))}
+              required
+            />
+            <button
+              style={{ ...S.createBtn, opacity: creating ? 0.55 : 1 }}
+              type="submit"
+              disabled={creating}
+            >
+              {creating ? 'Creating…' : 'Create event'}
+            </button>
+          </form>
+        )}
 
         {/* Events list */}
+        <div style={S.sectionLabel}>
+          {events.length === 0 ? 'No events yet' : `${events.filter(e => e.active).length} active`}
+        </div>
+
         {events.length === 0 ? (
-          <p style={{ color: '#555', textAlign: 'center', marginTop: 32 }}>No events yet. Create one above.</p>
+          <div style={S.emptyState}>
+            <div style={S.emptyDot} />
+            <p style={S.emptyText}>Create your first event to get a QR code.</p>
+          </div>
         ) : (
-          <div style={s.eventList}>
-            {events.map(ev => (
-              <div key={ev.id} style={{ ...s.eventCard, opacity: ev.active ? 1 : 0.5 }}>
-                <div style={s.eventInfo}>
-                  <span style={s.eventName}>{ev.name}</span>
-                  <span style={s.eventMeta}>{ev.event_date} · {ev.photo_count} photos</span>
-                  {!ev.active && <span style={s.badge}>Inactive</span>}
+          <div style={S.eventList}>
+            {events.map((ev, i) => (
+              <div
+                key={ev.id}
+                style={{
+                  ...S.eventRow,
+                  opacity: ev.active ? 1 : 0.4,
+                  animation: `cascade-row 0.4s cubic-bezier(0.16,1,0.3,1) ${i * 55}ms both`,
+                }}
+              >
+                <div style={S.eventLeft}>
+                  <div style={S.eventTopRow}>
+                    {ev.active ? <span style={S.activeDot} /> : null}
+                    <span style={{ ...S.eventName, marginLeft: ev.active ? 8 : 0 }}>{ev.name}</span>
+                  </div>
+                  <span style={S.eventMeta}>
+                    {ev.event_date}{ev.photo_count > 0 ? ` · ${ev.photo_count} photo${ev.photo_count !== 1 ? 's' : ''}` : ''}
+                    {!ev.active && <span style={S.inactiveBadge}> · Inactive</span>}
+                  </span>
                 </div>
-                <div style={s.eventActions}>
-                  <button style={s.actionBtn} onClick={() => showQR(ev.id)}>QR Code</button>
+                <div style={S.eventActions}>
+                  <button style={S.pill} onClick={() => showQR(ev.id)}>QR Code</button>
                   {ev.active && (
-                    <button style={{ ...s.actionBtn, color: '#f87171' }} onClick={() => deactivate(ev.id)}>
-                      Deactivate
+                    <button style={{ ...S.pill, ...S.pillDanger }} onClick={() => deactivate(ev.id)}>
+                      End
                     </button>
                   )}
                 </div>
@@ -139,16 +184,21 @@ export default function OrganizerDashboard() {
         )}
       </div>
 
-      {/* QR modal */}
+      {/* QR bottom sheet */}
       {qrModal && (
-        <div style={s.overlay} onClick={() => setQrModal(null)}>
-          <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={{ ...s.title, fontSize: 18, marginBottom: 16 }}>Scan to open camera</h2>
-            <img src={qrModal.qr} alt="QR code" style={{ width: 240, height: 240, borderRadius: 12 }} />
-            <p style={{ ...s.hint, marginTop: 12, wordBreak: 'break-all' }}>{qrModal.url}</p>
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <a href={qrModal.qr} download="event-qr.png" style={s.btn}>Download PNG</a>
-              <button style={{ ...s.btn, background: '#1a1a1a', color: '#fff' }} onClick={() => setQrModal(null)}>Close</button>
+        <div style={S.sheetOverlay} onClick={() => setQrModal(null)}>
+          <div style={S.sheet} onClick={e => e.stopPropagation()}>
+            <div style={S.sheetHandle} />
+            <p style={S.sheetLabel}>Scan to open camera</p>
+            <img src={qrModal.qr} alt="QR code" style={S.qrImg} />
+            <p style={S.qrUrl}>{qrModal.url}</p>
+            <div style={S.sheetActions}>
+              <a href={qrModal.qr} download="event-qr.png" style={S.sheetBtn}>
+                Download PNG
+              </a>
+              <button style={{ ...S.sheetBtn, ...S.sheetBtnSecondary }} onClick={() => setQrModal(null)}>
+                Done
+              </button>
             </div>
           </div>
         </div>
@@ -158,7 +208,7 @@ export default function OrganizerDashboard() {
 }
 
 function Page({ children }) {
-  return <div style={s.page}>{children}</div>
+  return <div style={S.page}>{children}</div>
 }
 
 function GoogleIcon() {
@@ -166,187 +216,357 @@ function GoogleIcon() {
     <svg width="18" height="18" viewBox="0 0 48 48" style={{ marginRight: 10, flexShrink: 0 }}>
       <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.3 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6C12.3 13 17.7 9.5 24 9.5z"/>
       <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8C43.6 37.5 46.5 31.5 46.5 24.5z"/>
-      <path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6z"/>
+      <path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 019.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A23.9 23.9 0 000 24c0 3.9.9 7.5 2.6 10.7l7.8-6z"/>
       <path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.6l-7.5-5.8c-2.1 1.4-4.8 2.3-8 2.3-6.3 0-11.6-3.5-13.6-9.2l-7.8 6C6.5 42.6 14.6 48 24 48z"/>
     </svg>
   )
 }
 
-const s = {
+const S = {
   page: {
     minHeight: '100%',
     display: 'flex',
     justifyContent: 'center',
-    padding: '32px 16px 64px',
-    background: '#0a0a0a',
-  },
-  card: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 16,
-    textAlign: 'center',
-    maxWidth: 360,
-    width: '100%',
-    marginTop: 48,
+    padding: '32px 16px 80px',
+    background: 'var(--ground)',
   },
   dashboard: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: '560px',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
+    alignItems: 'center',
+    marginBottom: '32px',
   },
-  title: {
-    fontSize: 24,
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  headerEmail: {
+    fontSize: '12px',
+    color: 'var(--text-secondary)',
+    letterSpacing: '0.02em',
+    maxWidth: '160px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  logo: {
+    fontFamily: 'var(--ff-display)',
+    fontSize: '14px',
     fontWeight: 700,
-    color: '#fff',
+    letterSpacing: '0.28em',
+    textTransform: 'uppercase',
+    color: 'var(--amber)',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+  logoutPill: {
+    padding: '6px 14px',
+    borderRadius: '999px',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
+    fontSize: '12px',
+    fontFamily: 'var(--ff-body)',
+    cursor: 'pointer',
+    transition: 'color 0.15s',
+  },
+  newEventBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '11px 18px',
+    borderRadius: '999px',
+    background: 'transparent',
+    border: '1.5px solid var(--border)',
+    color: 'var(--white-mid)',
+    fontSize: '14px',
+    fontFamily: 'var(--ff-body)',
+    fontWeight: 500,
+    cursor: 'pointer',
+    marginBottom: '16px',
+    transition: 'border-color 0.15s, color 0.15s',
+    letterSpacing: '0.01em',
+  },
+  newEventBtnActive: {
+    borderColor: 'var(--amber)',
+    color: 'var(--amber)',
   },
   createForm: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
-    marginBottom: 32,
-    padding: 20,
-    background: '#111',
-    borderRadius: 14,
-    border: '1px solid #222',
+    gap: '10px',
+    marginBottom: '28px',
+    padding: '20px',
+    background: 'var(--surface)',
+    borderRadius: '16px',
+    border: '1px solid var(--border)',
+    animation: 'sheet-up 0.3s cubic-bezier(0.16,1,0.3,1) both',
   },
   input: {
-    padding: '12px 14px',
-    borderRadius: 10,
-    border: '1.5px solid #2a2a2a',
-    background: '#1a1a1a',
-    color: '#fff',
-    fontSize: 15,
+    padding: '12px 15px',
+    borderRadius: '10px',
+    border: '1.5px solid var(--border)',
+    background: 'var(--surface-2)',
+    color: 'var(--white)',
+    fontSize: '15px',
+    fontFamily: 'var(--ff-body)',
     width: '100%',
+    transition: 'border-color 0.15s',
+    caretColor: 'var(--amber)',
   },
-  btn: {
+  createBtn: {
     padding: '12px 20px',
-    borderRadius: 10,
-    background: '#fff',
+    borderRadius: '999px',
+    background: 'var(--amber)',
     color: '#000',
-    fontSize: 15,
-    fontWeight: 600,
+    fontSize: '15px',
+    fontWeight: 700,
+    fontFamily: 'var(--ff-body)',
     cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
     border: 'none',
+    transition: 'opacity 0.15s',
+    marginTop: '4px',
   },
-  googleBtn: {
-    padding: '13px 20px',
-    borderRadius: 12,
-    background: '#fff',
-    color: '#000',
-    fontSize: 15,
+  sectionLabel: {
+    fontSize: '11px',
     fontWeight: 600,
-    cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'inline-flex',
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: 'var(--text-secondary)',
+    marginBottom: '12px',
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginTop: 8,
-  },
-  logoutBtn: {
-    padding: '8px 14px',
-    borderRadius: 8,
-    background: '#1a1a1a',
-    color: '#888',
-    fontSize: 13,
-    border: '1px solid #2a2a2a',
-  },
-  hint: {
-    fontSize: 13,
-    color: '#555',
+    gap: '12px',
+    paddingTop: '48px',
     textAlign: 'center',
+  },
+  emptyDot: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    border: '1.5px dashed var(--border)',
+  },
+  emptyText: {
+    fontSize: '14px',
+    color: 'var(--text-secondary)',
+    lineHeight: 1.5,
   },
   eventList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    gap: '8px',
   },
-  eventCard: {
+  eventRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '14px 16px',
-    background: '#111',
-    borderRadius: 12,
-    border: '1px solid #222',
-    gap: 12,
+    background: 'var(--surface)',
+    borderRadius: '14px',
+    border: '1px solid var(--border)',
+    gap: '12px',
+    transition: 'border-color 0.15s',
   },
-  eventInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
+  eventLeft: {
     flex: 1,
     minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  eventTopRow: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  activeDot: {
+    display: 'inline-block',
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: 'var(--amber)',
+    flexShrink: 0,
+    animation: 'pulse-dot 2.4s ease-in-out infinite',
   },
   eventName: {
-    fontSize: 15,
+    fontSize: '15px',
     fontWeight: 600,
-    color: '#fff',
+    color: 'var(--white)',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
   eventMeta: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: '12px',
+    color: 'var(--text-secondary)',
+    letterSpacing: '0.02em',
   },
-  badge: {
-    fontSize: 11,
-    color: '#f87171',
-    background: '#3f1f1f',
-    padding: '2px 8px',
-    borderRadius: 6,
-    display: 'inline-block',
-    width: 'fit-content',
+  inactiveBadge: {
+    color: 'var(--danger)',
   },
   eventActions: {
     display: 'flex',
-    gap: 8,
+    gap: '8px',
     flexShrink: 0,
   },
-  actionBtn: {
-    padding: '7px 12px',
-    borderRadius: 8,
-    background: '#1a1a1a',
-    color: '#ccc',
-    fontSize: 13,
-    border: '1px solid #2a2a2a',
+  pill: {
+    padding: '7px 14px',
+    borderRadius: '999px',
+    background: 'var(--surface-2)',
+    border: '1px solid var(--border)',
+    color: 'var(--white-mid)',
+    fontSize: '13px',
+    fontFamily: 'var(--ff-body)',
+    fontWeight: 500,
     cursor: 'pointer',
+    transition: 'transform 0.12s cubic-bezier(0.34,1.56,0.64,1), color 0.1s',
   },
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.75)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-    padding: 20,
+  pillDanger: {
+    color: 'var(--danger)',
+    borderColor: 'rgba(248, 113, 113, 0.2)',
   },
-  modal: {
-    background: '#111',
-    border: '1px solid #222',
-    borderRadius: 20,
-    padding: 28,
+  /* Login */
+  loginCard: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    maxWidth: 320,
+    gap: '0',
+    textAlign: 'center',
+    maxWidth: '360px',
     width: '100%',
+    marginTop: '64px',
+    animation: 'scale-in 0.4s cubic-bezier(0.16,1,0.3,1) both',
+  },
+  loginCopy: {
+    margin: '32px 0 28px',
+  },
+  loginHeadline: {
+    fontFamily: 'var(--ff-display)',
+    fontSize: '28px',
+    fontWeight: 700,
+    color: 'var(--white)',
+    letterSpacing: '-0.02em',
+    lineHeight: 1.2,
+    marginBottom: '10px',
+  },
+  loginSub: {
+    fontSize: '15px',
+    color: 'var(--white-mid)',
+    lineHeight: 1.5,
+    letterSpacing: '0.01em',
+  },
+  googleBtn: {
+    padding: '14px 20px',
+    borderRadius: '999px',
+    background: 'var(--white)',
+    color: '#000',
+    fontSize: '15px',
+    fontWeight: 700,
+    fontFamily: 'var(--ff-body)',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    transition: 'opacity 0.15s',
+    letterSpacing: '0.01em',
+  },
+  loginHint: {
+    fontSize: '12px',
+    color: 'var(--text-secondary)',
+    marginTop: '14px',
+    lineHeight: 1.5,
+  },
+  /* QR sheet */
+  sheetOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.6)',
+    zIndex: 100,
+    display: 'flex',
+    alignItems: 'flex-end',
+  },
+  sheet: {
+    width: '100%',
+    background: '#111',
+    borderRadius: '20px 20px 0 0',
+    padding: '14px 24px 48px',
+    animation: 'sheet-up 0.35s cubic-bezier(0.16,1,0.3,1) both',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  sheetHandle: {
+    width: '36px',
+    height: '4px',
+    borderRadius: '2px',
+    background: 'rgba(255,255,255,0.2)',
+    marginBottom: '20px',
+  },
+  sheetLabel: {
+    fontFamily: 'var(--ff-body)',
+    fontSize: '13px',
+    fontWeight: 500,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--white-mid)',
+    marginBottom: '20px',
+  },
+  qrImg: {
+    width: '220px',
+    height: '220px',
+    borderRadius: '16px',
+    marginBottom: '16px',
+  },
+  qrUrl: {
+    fontSize: '11px',
+    color: 'var(--text-secondary)',
+    wordBreak: 'break-all',
+    textAlign: 'center',
+    maxWidth: '280px',
+    marginBottom: '24px',
+    letterSpacing: '0.02em',
+    lineHeight: 1.5,
+  },
+  sheetActions: {
+    display: 'flex',
+    gap: '10px',
+    width: '100%',
+    maxWidth: '320px',
+  },
+  sheetBtn: {
+    flex: 1,
+    padding: '13px 16px',
+    borderRadius: '999px',
+    background: 'var(--amber)',
+    color: '#000',
+    fontSize: '14px',
+    fontWeight: 700,
+    fontFamily: 'var(--ff-body)',
+    textDecoration: 'none',
+    textAlign: 'center',
+    cursor: 'pointer',
+    border: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetBtnSecondary: {
+    background: 'var(--surface-2)',
+    color: 'var(--white-mid)',
+    border: '1px solid var(--border)',
+  },
+  spinner: {
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    border: '2px solid var(--border)',
+    borderTopColor: 'var(--amber)',
+    animation: 'spin 0.8s linear infinite',
   },
 }

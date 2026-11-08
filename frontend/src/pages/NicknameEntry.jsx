@@ -9,6 +9,8 @@ export default function NicknameEntry() {
   const [event, setEvent] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [focused, setFocused] = useState(false)
 
   useEffect(() => {
     api(`/api/events/${eventId}`)
@@ -24,118 +26,206 @@ export default function NicknameEntry() {
   function handleStart(e) {
     e.preventDefault()
     const name = nickname.trim()
-    if (!name) return
+    if (!name || submitting) return
+    setSubmitting(true)
     sessionStorage.setItem(`nickname_${eventId}`, name)
+    if (event?.name) sessionStorage.setItem(`event_name_${eventId}`, event.name)
     navigate(`/event/${eventId}/camera`)
   }
 
-  if (loading) return <Screen><p style={{ color: '#888' }}>Loading event…</p></Screen>
-  if (error) return <Screen><p style={{ color: '#f87171' }}>{error}</p></Screen>
+  if (loading) return (
+    <div style={S.screen}>
+      <div style={S.spinner} />
+    </div>
+  )
+
+  if (error) return (
+    <div style={S.screen}>
+      <div style={S.errorWrap}>
+        <div style={S.errorDot} />
+        <p style={S.errorText}>{error}</p>
+      </div>
+    </div>
+  )
+
+  const eventDate = event?.event_date
+    ? new Date(event.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null
 
   return (
-    <Screen>
-      <div style={styles.card}>
-        <div style={styles.cameraIcon}>📷</div>
-        <h1 style={styles.eventName}>{event.name}</h1>
-        <p style={styles.subtitle}>Enter your nickname to open the camera</p>
+    <div style={S.screen}>
+      <div style={S.inner}>
+        {/* Logotype */}
+        <div style={S.logoWrap}>
+          <span style={S.logo}>MOMENTA</span>
+        </div>
 
-        <form onSubmit={handleStart} style={styles.form}>
-          <input
-            style={styles.input}
-            type="text"
-            placeholder="Your nickname (e.g. John)"
-            value={nickname}
-            onChange={e => setNickname(e.target.value)}
-            maxLength={30}
-            autoFocus
-          />
+        {/* Event headline */}
+        <div style={S.eventBlock}>
+          <h1 style={S.eventName}>{event.name}</h1>
+          {eventDate && <p style={S.eventDate}>{eventDate}</p>}
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleStart} style={S.form}>
+          <div style={{ ...S.inputWrap, ...(focused ? S.inputWrapFocused : {}) }}>
+            <input
+              style={S.input}
+              type="text"
+              placeholder="Your name"
+              value={nickname}
+              onChange={e => setNickname(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              maxLength={30}
+              autoFocus
+              autoComplete="off"
+              autoCorrect="off"
+            />
+          </div>
+
           <button
             style={{
-              ...styles.button,
-              opacity: nickname.trim() ? 1 : 0.4,
+              ...S.btn,
+              opacity: nickname.trim() && !submitting ? 1 : 0.4,
+              transform: submitting ? 'scale(0.97)' : 'scale(1)',
             }}
             type="submit"
-            disabled={!nickname.trim()}
+            disabled={!nickname.trim() || submitting}
           >
-            Open Camera
+            Open camera
           </button>
         </form>
 
-        <p style={styles.hint}>
-          Your photos will be uploaded directly to the event album.
-        </p>
+        {/* Hint */}
+        <p style={S.hint}>Photos go straight to the event album — nothing stays on your phone.</p>
       </div>
-    </Screen>
+    </div>
   )
 }
 
-function Screen({ children }) {
-  return (
-    <div style={styles.screen}>{children}</div>
-  )
-}
-
-const styles = {
+const S = {
   screen: {
     minHeight: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '24px',
-    background: '#0a0a0a',
+    padding: '32px 24px 48px',
+    background: 'var(--ground)',
   },
-  card: {
+  inner: {
     width: '100%',
     maxWidth: '360px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '16px',
-    textAlign: 'center',
+    gap: '0',
+    animation: 'scale-in 0.4s cubic-bezier(0.16,1,0.3,1) both',
   },
-  cameraIcon: {
-    fontSize: '56px',
-    lineHeight: 1,
+  logoWrap: {
+    marginBottom: '48px',
+  },
+  logo: {
+    fontFamily: 'var(--ff-display)',
+    fontSize: '13px',
+    fontWeight: 700,
+    letterSpacing: '0.3em',
+    textTransform: 'uppercase',
+    color: 'var(--amber)',
+  },
+  eventBlock: {
+    textAlign: 'center',
+    marginBottom: '40px',
   },
   eventName: {
-    fontSize: '22px',
-    fontWeight: '700',
-    color: '#fff',
-    lineHeight: 1.3,
+    fontFamily: 'var(--ff-display)',
+    fontSize: '32px',
+    fontWeight: 700,
+    color: 'var(--white)',
+    letterSpacing: '-0.02em',
+    lineHeight: 1.15,
+    marginBottom: '8px',
   },
-  subtitle: {
-    fontSize: '15px',
-    color: '#888',
+  eventDate: {
+    fontFamily: 'var(--ff-body)',
+    fontSize: '14px',
+    fontWeight: 400,
+    color: 'var(--white-mid)',
+    letterSpacing: '0.02em',
   },
   form: {
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
-    marginTop: '8px',
+    marginBottom: '24px',
+  },
+  inputWrap: {
+    width: '100%',
+    borderRadius: '14px',
+    border: '1.5px solid var(--border)',
+    background: 'var(--surface-2)',
+    transition: 'border-color 0.15s',
+  },
+  inputWrapFocused: {
+    borderColor: 'var(--amber)',
   },
   input: {
     width: '100%',
-    padding: '14px 16px',
-    borderRadius: '12px',
-    border: '1.5px solid #333',
-    background: '#1a1a1a',
-    color: '#fff',
-    fontSize: '16px',
+    padding: '15px 18px',
+    background: 'transparent',
+    color: 'var(--white)',
+    fontSize: '17px',
+    fontFamily: 'var(--ff-body)',
+    fontWeight: 500,
+    border: 'none',
+    display: 'block',
+    caretColor: 'var(--amber)',
   },
-  button: {
+  btn: {
     width: '100%',
-    padding: '14px',
-    borderRadius: '12px',
-    background: '#fff',
+    padding: '15px',
+    borderRadius: '999px',
+    background: 'var(--amber)',
     color: '#000',
     fontSize: '16px',
-    fontWeight: '600',
-    transition: 'opacity 0.15s',
+    fontWeight: 700,
+    fontFamily: 'var(--ff-body)',
+    letterSpacing: '0.01em',
+    transition: 'opacity 0.15s, transform 0.15s cubic-bezier(0.34,1.56,0.64,1)',
+    border: 'none',
+    cursor: 'pointer',
   },
   hint: {
+    fontFamily: 'var(--ff-body)',
     fontSize: '13px',
-    color: '#555',
-    marginTop: '8px',
+    color: 'var(--text-secondary)',
+    textAlign: 'center',
+    lineHeight: 1.5,
+  },
+  spinner: {
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    border: '2px solid var(--border)',
+    borderTopColor: 'var(--amber)',
+    animation: 'spin 0.8s linear infinite',
+  },
+  errorWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '12px',
+    textAlign: 'center',
+  },
+  errorDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    background: 'var(--danger)',
+  },
+  errorText: {
+    fontSize: '15px',
+    color: 'var(--danger)',
   },
 }
