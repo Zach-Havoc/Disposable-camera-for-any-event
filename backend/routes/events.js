@@ -12,6 +12,30 @@ router.get('/:id/guest-count', (req, res) => {
   res.json({ count: row.count })
 })
 
+router.get('/:id/guest-session', (req, res) => {
+  const ip = req.ip
+  const ua = (req.headers['user-agent'] || '').slice(0, 300)
+  const session = db.prepare(
+    'SELECT nickname FROM guest_sessions WHERE event_id = ? AND ip_address = ? AND user_agent = ? ORDER BY created_at DESC LIMIT 1'
+  ).get(req.params.id, ip, ua)
+  if (!session) return res.json({})
+  const countRow = db.prepare(
+    'SELECT COUNT(*) AS count FROM photos WHERE event_id = ? AND nickname = ?'
+  ).get(req.params.id, session.nickname)
+  res.json({ nickname: session.nickname, photoCount: countRow.count })
+})
+
+router.post('/:id/guest-session', (req, res) => {
+  const { nickname } = req.body
+  if (!nickname) return res.status(400).json({ error: 'Missing nickname.' })
+  const ip = req.ip
+  const ua = (req.headers['user-agent'] || '').slice(0, 300)
+  db.prepare(
+    'INSERT INTO guest_sessions (event_id, nickname, ip_address, user_agent) VALUES (?, ?, ?, ?)'
+  ).run(req.params.id, nickname, ip, ua)
+  res.json({ ok: true })
+})
+
 router.get('/:id', (req, res) => {
   const event = db.prepare('SELECT id, name, event_date, photo_limit, active FROM events WHERE id = ?').get(req.params.id)
 

@@ -15,9 +15,20 @@ export default function NicknameEntry() {
   useEffect(() => {
     api(`/api/events/${eventId}`)
       .then(r => r.json())
-      .then(data => {
-        if (data.error) setError(data.error)
-        else setEvent(data)
+      .then(async data => {
+        if (data.error) { setError(data.error); return }
+        setEvent(data)
+        // Check if this device already joined this event (IP + user-agent match)
+        try {
+          const sr = await api(`/api/events/${eventId}/guest-session`)
+          const session = await sr.json()
+          if (session.nickname) {
+            localStorage.setItem(`nickname_${eventId}`, session.nickname)
+            if (data.name) localStorage.setItem(`event_name_${eventId}`, data.name)
+            navigate(`/event/${eventId}/camera`, { replace: true })
+            return
+          }
+        } catch {}
       })
       .catch(() => setError('Could not load event.'))
       .finally(() => setLoading(false))
@@ -30,6 +41,12 @@ export default function NicknameEntry() {
     setSubmitting(true)
     localStorage.setItem(`nickname_${eventId}`, name)
     if (event?.name) localStorage.setItem(`event_name_${eventId}`, event.name)
+    // Register this device's session server-side so re-scans skip the name form
+    api(`/api/events/${eventId}/guest-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: name }),
+    }).catch(() => {})
     navigate(`/event/${eventId}/camera`)
   }
 

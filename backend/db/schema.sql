@@ -26,3 +26,14 @@ CREATE TABLE IF NOT EXISTS photos (
   drive_file_id TEXT,
   uploaded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS guest_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id TEXT NOT NULL REFERENCES events(id),
+  nickname TEXT NOT NULL,
+  ip_address TEXT NOT NULL,
+  user_agent TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_guest_sessions ON guest_sessions(event_id, ip_address);
